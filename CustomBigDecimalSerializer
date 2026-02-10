@@ -1,0 +1,55 @@
+package com.hws.demo;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+
+public class CustomBigDecimalSerializer extends JsonSerializer<BigDecimal> {
+
+    @Override
+    public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+        if (value == null) {
+            gen.writeNull();
+            return;
+        }
+
+        // Determine US/EU
+        boolean useEuro = true;
+        DecimalFormatSymbols symbols = useEuro ? DecimalFormatSymbols.getInstance(Locale.GERMANY)
+                : DecimalFormatSymbols.getInstance(Locale.US);
+
+        String formatted = formatWithGrouping(value.toPlainString(), symbols.getGroupingSeparator(), symbols.getDecimalSeparator());
+        gen.writeString(formatted);
+    }
+
+    private String formatWithGrouping(String plain, char groupingSep, char decimalSep) {
+        int dotIndex = plain.indexOf('.');
+        int start = plain.startsWith("-") ? 1 : 0;
+        int endInt = (dotIndex == -1) ? plain.length() : dotIndex;
+
+        StringBuilder sb = new StringBuilder();
+        if (start == 1) sb.append('-');
+
+        // Insert grouping
+        int len = endInt - start;
+        for (int i = 0; i < len; i++) {
+            sb.append(plain.charAt(start + i));
+            int remaining = len - i - 1;
+            if (remaining > 0 && remaining % 3 == 0) sb.append(groupingSep);
+        }
+
+        // Append decimal part
+        if (dotIndex != -1) {
+            sb.append(decimalSep);
+            sb.append(plain.substring(dotIndex + 1));
+        }
+
+        return sb.toString();
+    }
+
+}
